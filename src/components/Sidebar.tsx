@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Mail, Grid, BarChart, Settings, ChevronRight } from 'lucide-react';
+import { Mail, Grid, BarChart, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -34,13 +34,7 @@ const Sidebar = ({ className }: SidebarProps) => {
       
       <div className="mt-auto flex flex-col items-center gap-6">
         <SidebarItem icon={<Settings size={20} />} expanded={expanded} label="Settings" />
-        
-        <button 
-          onClick={() => setExpanded(!expanded)}
-          className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
-        >
-          <ChevronRight size={16} className={`text-gray-400 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
-        </button>
+        <SidebarItem icon={<LogOut size={20} />} expanded={expanded} label="Logout" />
       </div>
     </div>
   );

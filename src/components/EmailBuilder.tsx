@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { toast } from "sonner";
+import { ArrowRight } from 'lucide-react';
 
 const EmailBuilder = () => {
   const [emailContent, setEmailContent] = useState('');
@@ -17,6 +18,13 @@ const EmailBuilder = () => {
 
   return (
     <div className="w-full max-w-3xl mx-auto">
+      <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10">
+        <button className="px-4 py-2 rounded-full bg-black/40 text-sm text-gray-300 border border-white/10 backdrop-blur-sm flex items-center gap-2 hover:bg-black/50 transition-all">
+          Turn Text Into Email Templates in Minutes
+          <ArrowRight size={16} />
+        </button>
+      </div>
+      
       <div className="text-center mb-4">
         <h1 className="text-6xl font-bold mb-5 text-white">
           Email Template in Minutes.
