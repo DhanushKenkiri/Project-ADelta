@@ -65,3 +65,28 @@
 .hover-highlight:hover {
   @apply text-white bg-white/10 rounded-md;
 }
+
+/* Enhanced textarea styling */
+textarea:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Better scrollbar for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
