@@ -8,8 +8,15 @@ interface EmailWorkspaceProps {
   emailContent: string;
 }
 
+// Define the message type to ensure type safety
+type MessageRole = 'user' | 'assistant';
+interface Message {
+  role: MessageRole;
+  content: string;
+}
+
 const EmailWorkspace = ({ emailContent }: EmailWorkspaceProps) => {
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
+  const [messages, setMessages] = useState<Message[]>([
     { 
       role: 'assistant', 
       content: "I've generated an email template based on your request. Would you like to make any adjustments?" 
@@ -21,15 +28,15 @@ const EmailWorkspace = ({ emailContent }: EmailWorkspaceProps) => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
     
-    // Add user message
-    const newMessages = [...messages, { role: 'user', content: inputMessage }];
+    // Add user message with the correct type
+    const newMessages = [...messages, { role: 'user' as MessageRole, content: inputMessage }];
     setMessages(newMessages);
     setInputMessage('');
     
-    // Mock assistant response after a short delay
+    // Mock assistant response after a short delay with the correct type
     setTimeout(() => {
       setMessages([...newMessages, { 
-        role: 'assistant', 
+        role: 'assistant' as MessageRole, 
         content: "I've updated the template based on your feedback. Is there anything else you'd like to modify?" 
       }]);
     }, 1000);
