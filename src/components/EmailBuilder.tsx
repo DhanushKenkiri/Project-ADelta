@@ -27,12 +27,12 @@ const EmailBuilder = () => {
       {showWorkspace ? (
         <EmailWorkspace emailContent={emailContent} onRevert={handleRevert} />
       ) : (
-        <div className="max-w-3xl mx-auto animate-fade-in">
-          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10">
-            <button className="px-4 py-2 rounded-full bg-black/40 text-sm text-gray-300 border border-white/10 backdrop-blur-sm flex items-center gap-2 hover:bg-black/50 transition-all">
+        <div className="max-w-3xl mx-auto animate-fade-in relative">
+          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-md">
+            <div className="px-4 py-2 rounded-full bg-black/40 text-sm text-gray-300 border border-white/10 backdrop-blur-sm flex items-center justify-center gap-2 hover:bg-black/50 transition-all">
               Turn Text Into Email Templates in Minutes
-              <ArrowRight size={16} />
-            </button>
+              <ArrowRight size={16} className="ml-2" />
+            </div>
           </div>
           
           <div className="text-center mb-4">
@@ -73,3 +73,4 @@ const EmailBuilder = () => {
 };
 
 export default EmailBuilder;
+
