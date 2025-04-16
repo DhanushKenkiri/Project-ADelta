@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { toast } from "sonner";
 import { ArrowRight } from 'lucide-react';
@@ -27,9 +26,9 @@ const EmailBuilder = () => {
       {showWorkspace ? (
         <EmailWorkspace emailContent={emailContent} onRevert={handleRevert} />
       ) : (
-        <div className="max-w-3xl mx-auto animate-fade-in relative">
-          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-md">
-            <div className="px-4 py-2 rounded-full bg-black/40 text-sm text-gray-300 border border-white/10 backdrop-blur-sm flex items-center justify-center gap-2 hover:bg-black/50 transition-all">
+        <div className="max-w-3xl mx-auto animate-fade-in relative px-4">
+          <div className="absolute top-6 left-0 right-0 z-10 flex justify-center">
+            <div className="px-4 py-2 rounded-full bg-black/40 text-sm text-gray-300 border border-white/10 backdrop-blur-sm flex items-center justify-center gap-2 hover:bg-black/50 transition-all max-w-md w-full">
               Turn Text Into Email Templates in Minutes
               <ArrowRight size={16} className="ml-2" />
             </div>
@@ -73,4 +72,3 @@ const EmailBuilder = () => {
 };
 
 export default EmailBuilder;
-
