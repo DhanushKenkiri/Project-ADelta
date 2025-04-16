@@ -53,15 +53,16 @@ const EmailBuilder = () => {
 
           <div className="bg-[#111] border border-white/5 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
             <textarea 
-              className="w-full bg-[#1a1a1a] border-0 p-6 text-gray-300 focus:ring-0 min-h-[180px] placeholder-gray-500 transition-colors duration-300 focus:bg-[#1d1d1d]"
+              className="w-full bg-[#1a1a1a] border-0 p-6 text-gray-300 focus:ring-0 min-h-[180px] placeholder-gray-500 transition-all duration-300 focus:bg-[#1d1d1d] resize-none rounded-t-xl"
               placeholder="Enter your email content here..."
               value={emailContent}
               onChange={(e) => setEmailContent(e.target.value)}
+              style={{ outline: 'none' }}
             />
-            <div className="p-3">
+            <div className="p-4 bg-[#151515]">
               <button 
                 onClick={handleGenerateTemplate}
-                className="w-full bg-gradient-to-r from-blue-700 to-purple-600 text-white py-3 rounded-md font-medium transition-all duration-300 hover:opacity-90 hover:scale-[1.01] active:scale-[0.98]"
+                className="w-full bg-gradient-to-r from-blue-700 to-purple-600 text-white py-3 rounded-md font-medium transition-all duration-300 hover:opacity-90 hover:scale-[1.01] active:scale-[0.98] shadow-md"
               >
                 Generate Template
               </button>

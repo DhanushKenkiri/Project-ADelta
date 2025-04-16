@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Grid, BarChart, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -11,19 +11,23 @@ const Sidebar = ({ className }: SidebarProps) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className={cn(
-      'bg-[#0A0A0F] flex flex-col items-center py-6 border-r border-white/5 transition-all duration-300',
-      expanded ? 'w-[200px]' : 'w-[60px]',
-      className
-    )}>
+    <div 
+      className={cn(
+        'bg-[#0A0A0F] flex flex-col items-center py-6 border-r border-white/5 transition-all duration-300 group hover:w-[200px]',
+        expanded ? 'w-[200px]' : 'w-[60px]',
+        className
+      )}
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+    >
       <div className="mb-8 flex items-center justify-center">
         <div className="w-8 h-8 flex items-center justify-center font-bold text-xl text-white">
           <span className="text-purple-500">A</span>
           <span className="text-purple-500">δ</span>
         </div>
-        {expanded && (
-          <span className="ml-2 text-white font-semibold">Project-Aδ</span>
-        )}
+        <span className={`ml-2 text-white font-semibold whitespace-nowrap overflow-hidden transition-all duration-300 ${expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'}`}>
+          Project-Aδ
+        </span>
       </div>
       
       <nav className="flex flex-col space-y-6 items-center w-full">
@@ -62,9 +66,9 @@ const SidebarItem = ({ icon, active, expanded, label }: SidebarItemProps) => {
       )}>
         {icon}
       </div>
-      {expanded && (
-        <span className="ml-3 text-sm">{label}</span>
-      )}
+      <span className={`ml-3 text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'}`}>
+        {label}
+      </span>
     </button>
   );
 };
