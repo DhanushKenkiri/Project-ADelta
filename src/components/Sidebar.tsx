@@ -1,44 +1,147 @@
-
 import React, { useState, useEffect } from 'react';
-import { Mail, Grid, BarChart, Settings, LogOut } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Mail, Grid, BarChart, Settings, FileText, HelpCircle, Folder } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { UserProfile } from './UserProfile';
+import { useAuth } from '@/lib/AuthContext';
 
 interface SidebarProps {
   className?: string;
 }
 
-const Sidebar = ({ className }: SidebarProps) => {
+const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const [expanded, setExpanded] = useState(false);
+  const [devNotice, setDevNotice] = useState<string | null>(null);
+  // Get the current path using the useLocation hook
+  const location = useLocation();
+  const currentPath = location.pathname;
+  const { user } = useAuth();
+
+  const isActive = (path: string) => {
+    return currentPath === path || currentPath.startsWith(path);
+  };
+
+  const handleInDevFeature = (e: React.MouseEvent, label: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDevNotice(label);
+    setTimeout(() => setDevNotice(null), 3000);
+  };
 
   return (
     <div 
-      className={cn(
-        'bg-[#0A0A0F] flex flex-col items-center py-6 border-r border-white/5 transition-all duration-300 group hover:w-[200px]',
-        expanded ? 'w-[200px]' : 'w-[60px]',
-        className
-      )}
+      className={`bg-black flex flex-col items-center py-4 border-r border-neutral-800/50 transition-all duration-300 ${
+        expanded ? 'w-[200px]' : 'w-[60px]'
+      } ${className}`}
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={() => setExpanded(false)}
     >
-      <div className="mb-8 flex items-center justify-center">
-        <div className="w-8 h-8 flex items-center justify-center font-bold text-xl text-white">
-          <span className="text-purple-500">A</span>
-          <span className="text-purple-500">δ</span>
+      <div className="mb-6">
+        <div className="flex items-center justify-center">
+          <Link to="/" className="text-2xl font-bold text-indigo-500">
+            A<span className="text-indigo-500">δ</span>
+          </Link>
         </div>
-        <span className={`ml-2 text-white font-semibold whitespace-nowrap overflow-hidden transition-all duration-300 ${expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'}`}>
-          Project-Aδ
-        </span>
       </div>
       
-      <nav className="flex flex-col space-y-6 items-center w-full">
-        <SidebarItem icon={<Mail size={20} />} active expanded={expanded} label="Email" />
-        <SidebarItem icon={<Grid size={20} />} expanded={expanded} label="Templates" />
-        <SidebarItem icon={<BarChart size={20} />} expanded={expanded} label="Analytics" />
+      <nav className="flex flex-col space-y-1 items-center w-full">
+        <SidebarItem 
+          icon={<Mail size={20} />} 
+          active={isActive('/')} 
+          expanded={expanded} 
+          label="Email" 
+          to="/"
+        />
+        <SidebarItem 
+          icon={<FileText size={20} />} 
+          active={isActive('/templates')} 
+          expanded={expanded} 
+          label="Templates" 
+          to="/templates"
+        />
+        {user && (
+          <SidebarItem 
+            icon={<Folder size={20} />} 
+            active={isActive('/my-templates')} 
+            expanded={expanded} 
+            label="Your Templates" 
+            to="/my-templates"
+          />
+        )}
+        <div className="relative">
+          <div 
+            onClick={(e) => handleInDevFeature(e, "Dashboard")} 
+            className="w-full"
+          >
+            <SidebarItem 
+              icon={<Grid size={20} />} 
+              active={isActive('/dashboard')} 
+              expanded={expanded} 
+              label="Dashboard" 
+              to="#"
+            />
+          </div>
+          {devNotice === "Dashboard" && (
+            <div className="absolute top-1 -right-32 z-10 px-3 py-1.5 bg-neutral-800 text-xs text-white rounded shadow-lg whitespace-nowrap border border-neutral-700 animate-fade-in-out flex items-center">
+              <div className="w-2 h-2 rounded-full bg-indigo-500 mr-2 animate-pulse"></div>
+              In development
+            </div>
+          )}
+        </div>
+        <div className="relative">
+          <div 
+            onClick={(e) => handleInDevFeature(e, "Analytics")} 
+            className="w-full"
+          >
+            <SidebarItem 
+              icon={<BarChart size={20} />} 
+              active={isActive('/analytics')} 
+              expanded={expanded} 
+              label="Analytics" 
+              to="#"
+            />
+          </div>
+          {devNotice === "Analytics" && (
+            <div className="absolute top-1 -right-32 z-10 px-3 py-1.5 bg-neutral-800 text-xs text-white rounded shadow-lg whitespace-nowrap border border-neutral-700 animate-fade-in-out flex items-center">
+              <div className="w-2 h-2 rounded-full bg-indigo-500 mr-2 animate-pulse"></div>
+              In development
+            </div>
+          )}
+        </div>
       </nav>
       
-      <div className="mt-auto flex flex-col items-center gap-6">
-        <SidebarItem icon={<Settings size={20} />} expanded={expanded} label="Settings" />
-        <SidebarItem icon={<LogOut size={20} />} expanded={expanded} label="Logout" />
+      <div className="mt-auto flex flex-col items-center gap-1">
+        <div className="relative">
+          <div 
+            onClick={(e) => handleInDevFeature(e, "Settings")} 
+            className="w-full"
+          >
+            <SidebarItem 
+              icon={<Settings size={20} />} 
+              expanded={expanded} 
+              label="Settings" 
+              to="#"
+            />
+          </div>
+          {devNotice === "Settings" && (
+            <div className="absolute top-1 -right-32 z-10 px-3 py-1.5 bg-neutral-800 text-xs text-white rounded shadow-lg whitespace-nowrap border border-neutral-700 animate-fade-in-out flex items-center">
+              <div className="w-2 h-2 rounded-full bg-indigo-500 mr-2 animate-pulse"></div>
+              In development
+            </div>
+          )}
+        </div>
+        
+        {/* User Profile Component */}
+        <div className="w-full flex justify-center py-2 mt-2">
+          {user ? (
+            <UserProfile />
+          ) : (
+            <Link to="/login" className="text-neutral-500 hover:text-white">
+              <div className="h-8 w-8 rounded-full border border-primary/20 flex items-center justify-center transition-colors hover:border-primary/50">
+                <span className="text-xs">?</span>
+              </div>
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -49,27 +152,31 @@ interface SidebarItemProps {
   active?: boolean;
   expanded?: boolean;
   label?: string;
+  to: string;
 }
 
-const SidebarItem = ({ icon, active, expanded, label }: SidebarItemProps) => {
+const SidebarItem = ({ icon, active, expanded, label, to }: SidebarItemProps) => {
   return (
+    <Link to={to} className="w-full">
     <button
-      className={cn(
-        'group flex items-center transition-colors duration-200 w-full',
-        expanded ? 'px-5 justify-start' : 'justify-center',
-        active ? 'text-white' : 'text-gray-500 hover:text-white'
-      )}
-    >
-      <div className={cn(
-        'flex items-center justify-center rounded-md transition-colors duration-200 w-10 h-10',
-        active ? 'bg-white/10' : 'group-hover:bg-white/5'
-      )}>
+        className={`group flex items-center transition-colors duration-200 w-full py-2 ${
+          expanded ? 'px-4 justify-start' : 'justify-center'
+        } ${active ? 'text-white' : 'text-neutral-500 hover:text-white'}`}
+      >
+        <div className={`flex items-center justify-center min-w-[24px] ${
+          active ? 'text-white' : 'text-neutral-500 group-hover:text-white'
+        }`}>
         {icon}
       </div>
-      <span className={`ml-3 text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${expanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0'}`}>
+        {expanded && (
+          <span className={`ml-3 text-sm whitespace-nowrap overflow-hidden transition-opacity duration-200 ${
+            expanded ? 'opacity-100' : 'opacity-0'
+          }`}>
         {label}
       </span>
+        )}
     </button>
+    </Link>
   );
 };
 

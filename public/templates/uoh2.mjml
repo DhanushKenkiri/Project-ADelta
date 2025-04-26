@@ -1,0 +1,98 @@
+<mjml>
+  <mj-head>
+    <mj-preview>University of Hyderabad - Official Mail</mj-preview>
+    <mj-style>
+      .dark-theme {
+        background-color: #121212;
+        color: #ffffff;
+      }
+
+      .light-theme {
+        background-color: #ffffff;
+        color: #000000;
+      }
+
+      .theme-button {
+        cursor: pointer;
+        padding: 10px 20px;
+        margin: 10px;
+        border: none;
+        border-radius: 5px;
+      }
+
+      .light-button {
+        background-color: #f0f0f0;
+        color: #000000;
+      }
+
+      .dark-button {
+        background-color: #333333;
+        color: #ffffff;
+      }
+
+      .background-logo {
+        position: absolute;
+        opacity: 0.1;
+        z-index: -1;
+        width: 300px;
+        height: auto;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+    </mj-style>
+    <mj-script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const body = document.body;
+        const lightButton = document.getElementById("light-mode-button");
+        const darkButton = document.getElementById("dark-mode-button");
+
+        lightButton.addEventListener("click", function () {
+          body.className = "light-theme";
+        });
+
+        darkButton.addEventListener("click", function () {
+          body.className = "dark-theme";
+        });
+      });
+    </mj-script>
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-image src="cid:logo" class="background-logo" alt="University of Hyderabad Logo" />
+      </mj-column>
+    </mj-section>
+    <mj-section>
+      <mj-column>
+        <mj-button id="light-mode-button" class="theme-button light-button">Light Theme</mj-button>
+        <mj-button id="dark-mode-button" class="theme-button dark-button">Dark Theme</mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-section>
+      <mj-column>
+        <mj-text align="center" font-size="24px" font-weight="bold">
+          Welcome to the University of Hyderabad
+        </mj-text>
+        <mj-divider border-color="#cccccc" />
+        <mj-text font-size="16px">
+          Dear Student/Faculty,
+          <br />
+          <br />
+          Thank you for being part of the University of Hyderabad community. We are committed to ensuring the best academic experience for you. This is a placeholder for the official mail content. Replace this section with the required content as per your need.
+          <br />
+          <br />
+          Regards,<br />
+          University of Hyderabad
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section>
+      <mj-column>
+        <mj-text font-size="14px" align="center">
+          &copy; 2024 University of Hyderabad. All Rights Reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -1,0 +1,11 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "$uid": {
+      ".read": "$uid === auth.uid",
+      ".write": "$uid === auth.uid",
+      ".validate": "newData.child('size').val() < 1024 * 1024"
+    }
+  }
+}
