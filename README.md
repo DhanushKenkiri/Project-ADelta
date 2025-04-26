@@ -23,7 +23,7 @@ A collaborative template editor with enhanced Fluvio service for real-time colla
 
 1. Clone the repository
    ```
-   git clone https://github.com/yourusername/Project-ADelta.git
+   git clone https://github.com/dhanushkenkiri/Project-ADelta.git
    cd Project-ADelta
    ```
 
