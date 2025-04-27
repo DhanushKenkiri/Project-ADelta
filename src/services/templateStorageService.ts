@@ -1,17 +1,35 @@
-import { uploadFile, downloadFile, getPublicUrl, listFiles, deleteFile, StorageBucket, isStorageAccessible } from '@/integrations/supabase/storage';
-import { supabase } from '@/integrations/supabase/client';
+import { 
+  uploadFile, 
+  downloadFile, 
+  getPublicUrl, 
+  listFiles, 
+  deleteFile, 
+  StorageBucket, 
+  isStorageAccessible 
+} from '@/integrations/vercel/blob';
 import { v4 as uuidv4 } from 'uuid';
 import { generateThumbnail, dataUrlToFile } from './thumbnailService';
 import { fluvioService } from '@/lib/fluvioService';
+import {
+  getLocalTemplates,
+  saveLocalTemplate,
+  getLocalTemplateById,
+  deleteLocalTemplate,
+  getUserLocalTemplates,
+  LocalTemplate,
+  getLocalUserId,
+  storeHtmlContent,
+  retrieveHtmlContent
+} from './localStorageService';
 
-// In-memory fallback storage when Supabase is not available
-const localStorageFallback = {
+// In-memory storage for templates metadata
+const templatesDb = {
   templates: new Map<string, {
     id: string;
     name: string;
     description: string;
     category: string;
-    htmlContent: string;
+    htmlUrl: string;
     thumbnailUrl: string;
     createdAt: string;
     updatedAt: string;
@@ -30,24 +48,12 @@ export interface TemplateMetadata {
   userId: string;
 }
 
-type TemplatesTable = {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  html_url: string;
-  thumbnail_url: string;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-};
-
 // Helper function to check if we should use fallback storage
 const shouldUseFallback = async (): Promise<boolean> => {
   try {
     const storageAvailable = await isStorageAccessible();
-    if (!storageAvailable) {
-      console.log('Using local fallback storage since Supabase is not accessible');
+    if (!storageAvailable.success) {
+      console.log('Using local fallback storage since Vercel Blob is not accessible');
       return true;
     }
     return false;
@@ -55,6 +61,16 @@ const shouldUseFallback = async (): Promise<boolean> => {
     console.warn('Error checking storage accessibility:', error);
     return true;
   }
+};
+
+// Helper to get user info - in a real app, this would come from auth
+const getCurrentUser = async () => {
+  // Here you would add your authentication logic
+  // For now, use the persistent local user ID
+  return {
+    id: getLocalUserId(),
+    email: 'user@example.com'
+  };
 };
 
 export const saveTemplate = async (
@@ -65,7 +81,7 @@ export const saveTemplate = async (
   thumbnailImage?: File
 ) => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
     
     if (!user) {
       throw new Error('User not authenticated');
@@ -76,7 +92,7 @@ export const saveTemplate = async (
     
     // Check if we need to use fallback
     if (await shouldUseFallback()) {
-      // Use local storage fallback
+      // Use localStorage fallback
       let thumbnailUrl = '/images/default-template-thumbnail.jpg';
       
       // If thumbnail provided, we'd normally process it
@@ -98,18 +114,24 @@ export const saveTemplate = async (
         }
       }
       
-      // Store in memory
-      localStorageFallback.templates.set(templateId, {
+      // Store HTML content separately to handle large templates
+      storeHtmlContent(templateId, htmlContent);
+      
+      // Create template metadata
+      const template: LocalTemplate = {
         id: templateId,
         name,
         description,
         category,
-        htmlContent,
+        htmlContent: '', // We don't store the actual content in the metadata
         thumbnailUrl,
         createdAt: timestamp,
         updatedAt: timestamp,
         userId: user.id
-      });
+      };
+      
+      // Save to localStorage
+      saveLocalTemplate(template);
       
       return {
         success: true,
@@ -118,13 +140,13 @@ export const saveTemplate = async (
           name,
           description,
           category,
-          htmlUrl: `memory://${templateId}`,
+          htmlUrl: `local://${templateId}`,
           thumbnailUrl
         }
       };
     }
     
-    // Normal Supabase flow
+    // Normal Vercel Blob flow
     const sanitizedName = name.toLowerCase().replace(/\s+/g, '-');
     const templateFile = new File(
       [new Blob([htmlContent], { type: 'text/html' })],
@@ -134,35 +156,38 @@ export const saveTemplate = async (
     
     const templatePath = `${user.id}/${templateId}/${templateFile.name}`;
     
+    // Upload HTML content to Vercel Blob
     const uploadResult = await uploadFile(
-      StorageBucket.TEMPLATES,
+      templateFile,
       templatePath,
-      templateFile
+      StorageBucket.TEMPLATES
     );
     
-    if (!uploadResult.success) {
+    if (!uploadResult.url) {
       throw uploadResult.error || new Error('Failed to upload template file');
     }
     
-    const templateUrl = getPublicUrl(StorageBucket.TEMPLATES, templatePath);
+    const templateUrl = uploadResult.url;
     
     let thumbnailUrl = '';
     
+    // Upload thumbnail if provided
     if (thumbnailImage) {
       const fileExt = thumbnailImage.name.split('.').pop();
       const thumbnailPath = `${user.id}/${templateId}/thumbnail.${fileExt}`;
       
       const thumbResult = await uploadFile(
-        StorageBucket.TEMPLATES,
+        thumbnailImage,
         thumbnailPath,
-        thumbnailImage
+        StorageBucket.TEMPLATES
       );
       
-      if (thumbResult.success) {
-        thumbnailUrl = getPublicUrl(StorageBucket.TEMPLATES, thumbnailPath);
+      if (thumbResult.url) {
+        thumbnailUrl = thumbResult.url;
       }
     }
     
+    // Generate thumbnail if not provided
     if (!thumbnailUrl) {
       try {
         const thumbDataUrl = await generateThumbnail(htmlContent);
@@ -172,13 +197,13 @@ export const saveTemplate = async (
           const thumbPath = `${user.id}/${templateId}/thumbnail.jpg`;
           
           const genThumbResult = await uploadFile(
-            StorageBucket.TEMPLATES,
+            thumbFile,
             thumbPath,
-            thumbFile
+            StorageBucket.TEMPLATES
           );
           
-          if (genThumbResult.success) {
-            thumbnailUrl = getPublicUrl(StorageBucket.TEMPLATES, thumbPath);
+          if (genThumbResult.url) {
+            thumbnailUrl = genThumbResult.url;
           }
         }
       } catch (thumbErr) {
@@ -190,35 +215,30 @@ export const saveTemplate = async (
       }
     }
     
-    const { data, error } = await supabase
-      .from('templates')
-      .insert({
-        id: templateId,
-        name,
-        description,
-        category,
-        html_url: templateUrl,
-        thumbnail_url: thumbnailUrl,
-        user_id: user.id,
-        created_at: timestamp,
-        updated_at: timestamp
-      })
-      .select<string, TemplatesTable>()
-      .single();
+    // Store template metadata in our in-memory database
+    const templateData = {
+      id: templateId,
+      name,
+      description,
+      category,
+      htmlUrl: templateUrl,
+      thumbnailUrl,
+      userId: user.id,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
     
-    if (error) {
-      throw error;
-    }
+    templatesDb.templates.set(templateId, templateData);
     
     return {
       success: true,
       template: {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        category: data.category,
-        htmlUrl: data.html_url,
-        thumbnailUrl: data.thumbnail_url
+        id: templateData.id,
+        name: templateData.name,
+        description: templateData.description,
+        category: templateData.category,
+        htmlUrl: templateData.htmlUrl,
+        thumbnailUrl: templateData.thumbnailUrl
       }
     };
   } catch (err) {
@@ -234,11 +254,14 @@ export const getTemplateById = async (templateId: string) => {
   try {
     // Check if we need to use fallback
     if (await shouldUseFallback()) {
-      const template = localStorageFallback.templates.get(templateId);
+      const template = getLocalTemplateById(templateId);
       
       if (!template) {
         throw new Error('Template not found in local storage');
       }
+      
+      // Retrieve the HTML content from separate storage
+      const htmlContent = retrieveHtmlContent(templateId);
       
       return {
         success: true,
@@ -247,57 +270,48 @@ export const getTemplateById = async (templateId: string) => {
           name: template.name,
           description: template.description,
           category: template.category,
-          htmlContent: template.htmlContent,
+          htmlContent,
           thumbnailUrl: template.thumbnailUrl,
           createdAt: template.createdAt,
-          updatedAt: template.updatedAt
+          updatedAt: template.updatedAt,
+          userId: template.userId
         }
       };
     }
     
-    // Normal Supabase flow
-    const { data, error } = await supabase
-      .from('templates')
-      .select<string, TemplatesTable>()
-      .eq('id', templateId)
-      .single();
+    // Get from our in-memory database
+    const template = templatesDb.templates.get(templateId);
     
-    if (error) {
-      throw error;
+    if (!template) {
+      throw new Error('Template not found');
     }
     
-    const pathParts = data.html_url.split('/');
-    const storagePath = pathParts.slice(-3).join('/');
+    // Fetch HTML content from Vercel Blob
+    const templateUrl = template.htmlUrl;
     
-    const { data: htmlFile, success, error: downloadError } = await downloadFile(
-      StorageBucket.TEMPLATES,
-      storagePath
-    );
-    
-    if (!success || !htmlFile) {
-      throw downloadError || new Error('Failed to download template HTML');
-    }
-    
-    const htmlContent = await htmlFile.text();
+    // Fetch template HTML from URL
+    const htmlResponse = await fetch(templateUrl);
+    const htmlContent = await htmlResponse.text();
     
     return {
       success: true,
       template: {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        category: data.category,
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        category: template.category,
         htmlContent,
-        thumbnailUrl: data.thumbnail_url,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
+        thumbnailUrl: template.thumbnailUrl,
+        createdAt: template.createdAt,
+        updatedAt: template.updatedAt,
+        userId: template.userId
       }
     };
   } catch (err) {
-    console.error('Error fetching template:', err);
+    console.error('Failed to get template:', err);
     return { 
       success: false, 
-      error: err instanceof Error ? err : new Error('Unknown error fetching template') 
+      error: err instanceof Error ? err : new Error('Unknown error getting template') 
     };
   }
 };
@@ -315,117 +329,166 @@ export const updateTemplate = async (
   username?: string
 ) => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
     
     if (!user) {
       throw new Error('User not authenticated');
     }
     
-    const { data: template, error: fetchError } = await supabase
-      .from('templates')
-      .select<string, TemplatesTable>()
-      .eq('id', templateId)
-      .eq('user_id', user.id)
-      .single();
-    
-    if (fetchError) {
-      throw fetchError;
+    // Check if we need to use fallback
+    if (await shouldUseFallback()) {
+      const template = getLocalTemplateById(templateId);
+      
+      if (!template) {
+        throw new Error('Template not found in local storage');
+      }
+      
+      if (template.userId !== user.id) {
+        throw new Error('You do not have permission to update this template');
+      }
+      
+      // Get existing HTML content
+      const existingHtml = retrieveHtmlContent(templateId);
+      
+      // Update template metadata
+      const updatedTemplate: LocalTemplate = {
+        ...template,
+        ...(updates.name && { name: updates.name }),
+        ...(updates.description && { description: updates.description }),
+        ...(updates.category && { category: updates.category }),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Update HTML content if provided
+      if (updates.htmlContent) {
+        storeHtmlContent(templateId, updates.htmlContent);
+      }
+      
+      let thumbnailUrl = template.thumbnailUrl;
+      
+      if (updates.thumbnailImage) {
+        try {
+          thumbnailUrl = URL.createObjectURL(updates.thumbnailImage);
+        } catch (err) {
+          console.warn('Could not create object URL for thumbnail in fallback mode');
+        }
+      } else if (updates.htmlContent && thumbnailUrl === '/images/default-template-thumbnail.jpg') {
+        try {
+          const thumbDataUrl = await generateThumbnail(updates.htmlContent);
+          if (thumbDataUrl) {
+            thumbnailUrl = thumbDataUrl;
+          }
+        } catch (thumbErr) {
+          console.error('Error generating thumbnail in fallback mode:', thumbErr);
+        }
+      }
+      
+      updatedTemplate.thumbnailUrl = thumbnailUrl;
+      
+      // Save updated template to localStorage
+      saveLocalTemplate(updatedTemplate);
+      
+      return {
+        success: true,
+        template: {
+          id: updatedTemplate.id,
+          name: updatedTemplate.name,
+          description: updatedTemplate.description,
+          category: updatedTemplate.category,
+          htmlUrl: `local://${templateId}`,
+          thumbnailUrl: updatedTemplate.thumbnailUrl
+        }
+      };
     }
     
+    // Get template from our in-memory database
+    const template = templatesDb.templates.get(templateId);
+    
+    if (!template) {
+      throw new Error('Template not found');
+    }
+    
+    if (template.userId !== user.id) {
+      throw new Error('You do not have permission to update this template');
+    }
+    
+    const timestamp = new Date().toISOString();
+    
+    // Update HTML content if provided
+    let templateUrl = template.htmlUrl;
+    
     if (updates.htmlContent) {
-      const currentFilename = template.html_url.split('/').pop() || '';
-      const filename = updates.name 
-        ? `${updates.name.toLowerCase().replace(/\s+/g, '-')}.html`
-        : currentFilename;
-      
-      const htmlFile = new File(
+      const sanitizedName = (updates.name || template.name).toLowerCase().replace(/\s+/g, '-');
+      const templateFile = new File(
         [new Blob([updates.htmlContent], { type: 'text/html' })],
-        filename,
+        `${sanitizedName}.html`,
         { type: 'text/html' }
       );
       
-      const filePath = `${user.id}/${templateId}/${filename}`;
+      const templatePath = `${user.id}/${templateId}/${templateFile.name}`;
       
-      await uploadFile(
-        StorageBucket.TEMPLATES,
-        filePath,
-        htmlFile,
-        { upsert: true }
+      const uploadResult = await uploadFile(
+        templateFile,
+        templatePath,
+        StorageBucket.TEMPLATES
       );
       
-      // Notify collaborators about the template edit
-      if (userId && username) {
-        await fluvioService.sendTemplateEdit({
-          templateId,
-          userId,
-          username,
-          timestamp: Date.now(),
-          operation: 'replace',
-          content: updates.htmlContent
-        });
+      if (uploadResult.url) {
+        templateUrl = uploadResult.url;
       }
     }
     
-    let thumbnailUrl = template.thumbnail_url;
+    // Update thumbnail if provided
+    let thumbnailUrl = template.thumbnailUrl;
     
     if (updates.thumbnailImage) {
       const fileExt = updates.thumbnailImage.name.split('.').pop();
-      const thumbPath = `${user.id}/${templateId}/thumbnail.${fileExt}`;
+      const thumbnailPath = `${user.id}/${templateId}/thumbnail.${fileExt}`;
       
-      const { success } = await uploadFile(
-        StorageBucket.TEMPLATES,
-        thumbPath,
+      const thumbResult = await uploadFile(
         updates.thumbnailImage,
-        { upsert: true }
+        thumbnailPath,
+        StorageBucket.TEMPLATES
       );
       
-      if (success) {
-        thumbnailUrl = getPublicUrl(StorageBucket.TEMPLATES, thumbPath);
+      if (thumbResult.url) {
+        thumbnailUrl = thumbResult.url;
       }
-    } 
-    else if (updates.htmlContent) {
+    } else if (updates.htmlContent && thumbnailUrl === '/images/default-template-thumbnail.jpg') {
       try {
         const thumbDataUrl = await generateThumbnail(updates.htmlContent);
         
         if (thumbDataUrl) {
-          const thumbFile = dataUrlToFile(thumbDataUrl, `${templateId}-thumb.jpg`);
+          const thumbFile = dataUrlToFile(thumbDataUrl, `thumbnail-${templateId}.jpg`);
           const thumbPath = `${user.id}/${templateId}/thumbnail.jpg`;
           
-          const { success } = await uploadFile(
-            StorageBucket.TEMPLATES,
-            thumbPath,
+          const genThumbResult = await uploadFile(
             thumbFile,
-            { upsert: true }
+            thumbPath,
+            StorageBucket.TEMPLATES
           );
           
-          if (success) {
-            thumbnailUrl = getPublicUrl(StorageBucket.TEMPLATES, thumbPath);
+          if (genThumbResult.url) {
+            thumbnailUrl = genThumbResult.url;
           }
         }
-      } catch (err) {
-        console.warn('Error generating thumbnail, keeping existing one:', err);
+      } catch (thumbErr) {
+        console.error('Error generating thumbnail:', thumbErr);
       }
     }
     
-    const dbUpdates: any = { 
-      updated_at: new Date().toISOString() 
+    // Update template in our in-memory database
+    const updatedTemplate = {
+      ...template,
+      ...(updates.name && { name: updates.name }),
+      ...(updates.description && { description: updates.description }),
+      ...(updates.category && { category: updates.category }),
+      htmlUrl: templateUrl,
+      thumbnailUrl,
+      updatedAt: timestamp
     };
     
-    if (updates.name) dbUpdates.name = updates.name;
-    if (updates.description) dbUpdates.description = updates.description;
-    if (updates.category) dbUpdates.category = updates.category;
-    if (thumbnailUrl !== template.thumbnail_url) dbUpdates.thumbnail_url = thumbnailUrl;
-    
-    const { data: updatedTemplate, error: updateError } = await supabase
-      .from('templates')
-      .update(dbUpdates)
-      .eq('id', templateId)
-      .select<string, TemplatesTable>()
-      .single();
-    
-    if (updateError) {
-      throw updateError;
-    }
+    templatesDb.templates.set(templateId, updatedTemplate);
     
     return {
       success: true,
@@ -434,143 +497,141 @@ export const updateTemplate = async (
         name: updatedTemplate.name,
         description: updatedTemplate.description,
         category: updatedTemplate.category,
-        thumbnailUrl: updatedTemplate.thumbnail_url,
-        updatedAt: updatedTemplate.updated_at
+        htmlUrl: updatedTemplate.htmlUrl,
+        thumbnailUrl: updatedTemplate.thumbnailUrl
       }
     };
   } catch (err) {
-    console.error('Error updating template:', err);
+    console.error('Failed to update template:', err);
     return { 
       success: false, 
-      error: err instanceof Error ? err : new Error('Failed to update template') 
+      error: err instanceof Error ? err : new Error('Unknown error updating template') 
     };
   }
 };
 
 export const deleteTemplate = async (templateId: string) => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
     
     if (!user) {
       throw new Error('User not authenticated');
     }
     
-    const { data: template, error: fetchError } = await supabase
-      .from('templates')
-      .select<string, TemplatesTable>()
-      .eq('id', templateId)
-      .eq('user_id', user.id)
-      .single();
-    
-    if (fetchError) {
-      throw fetchError;
+    // Check if we need to use fallback
+    if (await shouldUseFallback()) {
+      const template = getLocalTemplateById(templateId);
+      
+      if (!template) {
+        throw new Error('Template not found in local storage');
+      }
+      
+      if (template.userId !== user.id) {
+        throw new Error('You do not have permission to delete this template');
+      }
+      
+      // Delete from localStorage
+      deleteLocalTemplate(templateId);
+      
+      // Delete HTML content
+      localStorage.removeItem(`template_html_${templateId}`);
+      
+      return { success: true };
     }
     
+    // Get template from our in-memory database
+    const template = templatesDb.templates.get(templateId);
+    
+    if (!template) {
+      throw new Error('Template not found');
+    }
+    
+    if (template.userId !== user.id) {
+      throw new Error('You do not have permission to delete this template');
+    }
+    
+    // List all files in the template directory
     const { data: files } = await listFiles(
-      StorageBucket.TEMPLATES,
-      `${user.id}/${templateId}`
+      `${user.id}/${templateId}`,
+      StorageBucket.TEMPLATES
     );
     
-    if (files && files.length > 0) {
-      await deleteFile(StorageBucket.TEMPLATES, `${user.id}/${templateId}`);
+    // Delete all files
+    for (const file of files) {
+      await deleteFile(
+        file.name,
+        StorageBucket.TEMPLATES
+      );
     }
     
-    const { error: dbError } = await supabase
-      .from('templates')
-      .delete()
-      .eq('id', templateId);
-    
-    if (dbError) {
-      throw dbError;
-    }
+    // Remove from our in-memory database
+    templatesDb.templates.delete(templateId);
     
     return { success: true };
   } catch (err) {
-    console.error('Error deleting template:', err);
+    console.error('Failed to delete template:', err);
     return { 
       success: false, 
-      error: err instanceof Error ? err : new Error('Failed to delete template') 
+      error: err instanceof Error ? err : new Error('Unknown error deleting template') 
     };
   }
 };
 
 export const getUserTemplates = async () => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
     
-    // If user is not authenticated, return empty templates with offline mode
-    // instead of throwing an error
     if (!user) {
-      console.log('User not authenticated, returning empty template list');
-      return {
-        success: true,
-        offline: true,
-        templates: []
-      };
+      throw new Error('User not authenticated');
     }
     
     // Check if we need to use fallback
     if (await shouldUseFallback()) {
-      // Filter templates for the current user
-      const userTemplates = Array.from(localStorageFallback.templates.values())
-        .filter(template => template.userId === user.id)
-        .map(template => ({
-          id: template.id,
-          name: template.name,
-          description: template.description,
-          category: template.category,
-          thumbnailUrl: template.thumbnailUrl,
-          createdAt: template.createdAt,
-          updatedAt: template.updatedAt
-        }));
+      // Get user templates from localStorage
+      const templates = getUserLocalTemplates();
       
       return {
         success: true,
-        offline: true, // Mark this as coming from offline storage
-        templates: userTemplates
+        templates: templates.map(t => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          category: t.category,
+          thumbnailUrl: t.thumbnailUrl,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt
+        }))
       };
     }
     
-    // Normal Supabase flow
-    const { data: templates, error } = await supabase
-      .from('templates')
-      .select<string, TemplatesTable>()
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      throw error;
-    }
+    // Get templates from our in-memory database
+    const templates = Array.from(templatesDb.templates.values())
+      .filter(t => t.userId === user.id)
+      .map(t => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        category: t.category,
+        thumbnailUrl: t.thumbnailUrl,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt
+      }));
     
     return {
       success: true,
-      offline: false, // Mark this as coming from online storage
-      templates: templates.map(template => ({
-        id: template.id,
-        name: template.name,
-        description: template.description,
-        category: template.category,
-        thumbnailUrl: template.thumbnail_url,
-        createdAt: template.created_at,
-        updatedAt: template.updated_at
-      }))
+      templates
     };
   } catch (err) {
-    console.error('Error fetching user templates:', err);
+    console.error('Failed to get user templates:', err);
     return { 
       success: false, 
-      offline: navigator.onLine ? false : true, // Check browser online status
-      error: err instanceof Error ? err : new Error('Failed to get user templates') 
+      error: err instanceof Error ? err : new Error('Unknown error getting templates') 
     };
   }
 };
 
-/**
- * Subscribe to collaborative edits for a template
- * @param templateId - ID of the template to watch for edits
- * @param callback - Function to call when template edits are received
- * @returns Unsubscribe function
- */
+// The following functions remain largely unchanged as they don't interact with storage directly
+
 export const subscribeToTemplateEdits = (
   templateId: string,
   callback: (edit: any) => void
@@ -578,12 +639,6 @@ export const subscribeToTemplateEdits = (
   return fluvioService.subscribeToTemplateEdits(templateId, callback);
 };
 
-/**
- * Subscribe to cursor position updates for collaborative editing
- * @param templateId - ID of the template to watch for cursor updates
- * @param callback - Function to call when cursor positions are updated
- * @returns Unsubscribe function
- */
 export const subscribeToCursorUpdates = (
   templateId: string,
   callback: (update: any) => void
@@ -591,32 +646,15 @@ export const subscribeToCursorUpdates = (
   return fluvioService.subscribeToCursorUpdates(templateId, callback);
 };
 
-/**
- * Update cursor position for collaborative editing
- * @param templateId - ID of the template being edited
- * @param userId - ID of the user
- * @param username - Username of the user
- * @param position - Cursor position in the document
- */
 export const updateCursorPosition = async (
   templateId: string,
   userId: string,
   username: string,
   position: number
 ) => {
-  await fluvioService.sendCursorPosition(templateId, userId, username, position);
+  return fluvioService.sendCursorPosition(templateId, userId, username, position);
 };
 
-/**
- * Apply a collaborative edit to a template
- * @param templateId - ID of the template to edit
- * @param userId - ID of the user making the edit
- * @param username - Username of the user making the edit
- * @param operation - Type of edit operation
- * @param position - Position in the document for the edit
- * @param length - Length of content to replace/delete
- * @param content - New content to insert
- */
 export const applyTemplateEdit = async (
   templateId: string,
   userId: string,
@@ -626,7 +664,7 @@ export const applyTemplateEdit = async (
   length?: number,
   content?: string
 ) => {
-  await fluvioService.sendTemplateEdit({
+  return fluvioService.sendTemplateEdit({
     templateId,
     userId,
     username,

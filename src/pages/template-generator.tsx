@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
-import { ArrowLeft, Send, Copy, Download, Save, RefreshCw, Eye, Code, Sun, Moon, Smartphone, Laptop, Monitor, ChevronDown, Share2 } from 'lucide-react';
+import { ArrowLeft, Send, Copy, Download, Save, RefreshCw, Eye, Code, Sun, Moon, Smartphone, Laptop, Monitor, ChevronDown, Share2, Camera, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getTemplateById } from '@/lib/templateUtils';
 import { sendChatMessage, updateTemplateWithChat, resetChatHistory, updateTemplateInChat } from '@/lib/groq';
 import HtmlCodeEditor from '@/components/HtmlCodeEditor';
 import ShareModal from '@/components/ShareModal';
+import ScreenCapture from '@/components/ScreenCapture';
+import ScreenPipeCapture from '@/components/ScreenPipeCapture';
+import { insertImageIntoHtml, compressImage } from '@/lib/imageUtils';
 import { sendTemplateEmail } from '@/lib/emailService';
 import PageTitle from '@/components/PageTitle';
 
@@ -35,6 +38,8 @@ const TemplateGeneratorPage: React.FC = () => {
   const [showOptions, setShowOptions] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isScreenCaptureOpen, setIsScreenCaptureOpen] = useState(false);
+  const [isScreenPipeCaptureOpen, setIsScreenPipeCaptureOpen] = useState(false);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -287,6 +292,74 @@ const TemplateGeneratorPage: React.FC = () => {
       case 'desktop':
       default:
         return <Monitor size={18} />;
+    }
+  };
+
+  // Handle screen capture completion
+  const handleScreenCapture = async (imageDataUrl: string) => {
+    try {
+      // Show loading toast
+      toast.loading('Processing captured image...');
+      
+      // Compress the image to reduce size
+      const compressedImage = await compressImage(imageDataUrl, 800, 0.85);
+      
+      // Insert the image into the HTML template
+      const updatedHtml = insertImageIntoHtml(htmlContent, compressedImage);
+      
+      // Update the template
+      setHtmlContent(updatedHtml);
+      
+      // Add system message about image insertion
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: 'Screenshot added to the email template.',
+        timestamp: Date.now()
+      }]);
+      
+      // Success notification
+      toast.success('Screenshot added to template');
+      
+      // Update the template in chat context
+      updateTemplateInChat(updatedHtml);
+      
+    } catch (error) {
+      console.error('Error processing screenshot:', error);
+      toast.error('Failed to add screenshot to template');
+    }
+  };
+
+  // Handle screen capture from ScreenPipe
+  const handleScreenPipeCapture = async (imageDataUrl: string) => {
+    try {
+      // Show loading toast
+      toast.loading('Processing ScreenPipe image...');
+      
+      // Compress the image to reduce size
+      const compressedImage = await compressImage(imageDataUrl, 800, 0.85);
+      
+      // Insert the image into the HTML template
+      const updatedHtml = insertImageIntoHtml(htmlContent, compressedImage);
+      
+      // Update the template
+      setHtmlContent(updatedHtml);
+      
+      // Add system message about image insertion
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: 'ScreenPipe screenshot added to the chat.',
+        timestamp: Date.now()
+      }]);
+      
+      // Success notification
+      toast.success('ScreenPipe screenshot added');
+      
+      // Update the template in chat context
+      updateTemplateInChat(updatedHtml);
+      
+    } catch (error) {
+      console.error('Error processing ScreenPipe screenshot:', error);
+      toast.error('Failed to add ScreenPipe screenshot');
     }
   };
 
@@ -595,13 +668,33 @@ const TemplateGeneratorPage: React.FC = () => {
                   onKeyDown={handleKeyPress}
                   disabled={isLoading || !htmlContent}
                 />
-                <button 
-                  onClick={sendMessage}
-                  disabled={isLoading || !inputMessage.trim() || !htmlContent}
-                  className="absolute bottom-2 right-2 bg-neutral-700 hover:bg-neutral-600 text-white p-1 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send size={14} />
-                </button>
+                <div className="absolute bottom-2 right-2 flex gap-1">
+                  <button
+                    onClick={() => setIsScreenCaptureOpen(true)}
+                    disabled={isLoading || !htmlContent}
+                    title="Capture screenshot to add to template"
+                    className="bg-neutral-700 hover:bg-neutral-600 text-white p-1 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Camera size={14} />
+                  </button>
+                  
+                  <button
+                    onClick={() => setIsScreenPipeCaptureOpen(true)}
+                    disabled={isLoading || !htmlContent}
+                    title="Capture with ScreenPipe"
+                    className="bg-green-700 hover:bg-green-600 text-white p-1 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ImageIcon size={14} />
+                  </button>
+                  
+                  <button 
+                    onClick={sendMessage}
+                    disabled={isLoading || !inputMessage.trim() || !htmlContent}
+                    className="bg-neutral-700 hover:bg-neutral-600 text-white p-1 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Send size={14} />
+                  </button>
+                </div>
               </div>
               {isLoading && (
                 <p className="text-[10px] text-neutral-400 mt-1 animate-pulse">
@@ -621,12 +714,31 @@ const TemplateGeneratorPage: React.FC = () => {
         isOpen={isShareModalOpen}
         onClose={() => {
           setIsShareModalOpen(false);
-          // Reset sharing status after modal is closed
-          setTimeout(() => setIsSharing(false), 1000);
+          // Reset sharing status after 500ms to allow UI to update
+          setTimeout(() => {
+            setIsSharing(false);
+          }, 500);
         }}
         templateName={templateName}
+        htmlContent={htmlContent} 
         onSend={handleSendTemplate}
       />
+      
+      {/* Screen Capture Modal */}
+      {isScreenCaptureOpen && (
+        <ScreenCapture
+          onCapture={handleScreenCapture}
+          onClose={() => setIsScreenCaptureOpen(false)}
+        />
+      )}
+      
+      {/* ScreenPipe Capture Modal */}
+      {isScreenPipeCaptureOpen && (
+        <ScreenPipeCapture
+          onCapture={handleScreenPipeCapture}
+          onClose={() => setIsScreenPipeCaptureOpen(false)}
+        />
+      )}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import ErrorBoundary from './components/ErrorBoundary'
+import { initializeScreenPipe } from './lib/screenpipeConfig'
 
 // Add console logs for debugging
 console.log('Application starting...');
@@ -10,6 +11,9 @@ console.log('Environment variables loaded:', {
   groqKey: !!import.meta.env.VITE_GROQ_API_KEY ? 'Present' : 'Missing',
   firebaseKey: !!import.meta.env.VITE_FIREBASE_API_KEY ? 'Present' : 'Missing',
 });
+
+// Initialize ScreenPipe integration
+initializeScreenPipe();
 
 const rootElement = document.getElementById("root");
 

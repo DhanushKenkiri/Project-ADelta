@@ -17,7 +17,14 @@
     "firebase:login": "firebase login",
     "firebase:init": "firebase init",
     "firebase:deploy": "firebase deploy",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "install:screenpipe": "echo \"Please install ScreenPipe from https://screenpi.pe/download\"",
+    "compile:contracts": "solc --optimize --abi --bin contracts/MailShare.sol -o build/",
+    "deploy:contracts": "node scripts/deploy-contracts.js",
+    "deploy:optimism": "node scripts/deploy-contracts.js optimism",
+    "deploy:arbitrum": "node scripts/deploy-contracts.js arbitrum",
+    "deploy:polygon": "node scripts/deploy-contracts.js polygon",
+    "deploy:goerli": "node scripts/deploy-contracts.js goerli"
   },
   "resolutions": {
     "node-fetch": "2.7.0"
@@ -59,6 +66,7 @@
     "@uiw/codemirror-theme-dracula": "^4.23.10",
     "@uiw/react-codemirror": "^4.23.10",
     "@uiw/react-textarea-code-editor": "^3.1.0",
+    "@vercel/blob": "^1.0.0",
     "ace-builds": "^1.40.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

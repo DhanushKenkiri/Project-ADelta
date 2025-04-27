@@ -17,10 +17,14 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Profile from "./pages/Profile";
 import StorageDemoPage from "./pages/storage-demo";
 import MyTemplates from "./pages/my-templates";
+import Settings from "./pages/Settings";
 import { AuthProvider } from "./lib/AuthContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { useAuth } from "./lib/AuthContext";
-import { initializeSupabase } from "@/integrations/supabase/init";
+import { initializeVercelBlob } from "@/integrations/vercel/init";
+import MultiFileUploadExample from "./pages/multi-file-upload-example";
+import MailInboxPage from "./pages/MailInbox";
+import ComposePage from "./pages/Compose";
 
 const queryClient = new QueryClient();
 
@@ -35,13 +39,13 @@ const HomeRedirect = () => {
   return user ? <Navigate to="/" /> : <Navigate to="/login" />;
 };
 
-// Initialize Supabase services component
-const SupabaseInitializer = () => {
+// Initialize storage services component
+const StorageInitializer = () => {
   useEffect(() => {
-    // Initialize Supabase services when the app loads
-    initializeSupabase().then(({ success }) => {
+    // Initialize Vercel Blob services when the app loads
+    initializeVercelBlob().then(({ success }) => {
       if (success) {
-        console.log('Supabase services initialized successfully');
+        console.log('Vercel Blob services initialized successfully');
       }
     });
   }, []);
@@ -54,7 +58,7 @@ const App = () => (
     <AuthProvider>
       <TooltipProvider>
         <FeedbackProvider apiEndpoint="/api/feedback" debugMode={false}>
-          <SupabaseInitializer />
+          <StorageInitializer />
           <Toaster />
           <Sonner position="top-center" />
           <BrowserRouter>
@@ -80,6 +84,11 @@ const App = () => (
                 <Route path="/template-generator" element={<TemplateGeneratorPage />} />
                 <Route path="/feedback-dashboard" element={<FeedbackDashboard />} />
                 <Route path="/storage-demo" element={<StorageDemoPage />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/multi-file-upload-example" element={<MultiFileUploadExample />} />
+                <Route path="/mail-inbox" element={<MailInboxPage />} />
+                <Route path="/mail" element={<MailInboxPage />} />
+                <Route path="/compose" element={<ComposePage />} />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

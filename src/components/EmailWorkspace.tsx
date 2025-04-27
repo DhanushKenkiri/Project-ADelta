@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { RefreshCcw, Copy, Sun, Moon, ArrowLeft, Share2, Save, Code, Eye, Loader2, Send, Smartphone, Laptop, Monitor, ChevronDown, Users, X } from 'lucide-react';
+import { RefreshCcw, Copy, Sun, Moon, ArrowLeft, Share2, Save, Code, Eye, Loader2, Send, Smartphone, Laptop, Monitor, ChevronDown, Users, X, Camera, ImageIcon } from 'lucide-react';
 import HtmlCodeEditor from './HtmlCodeEditor';
 import { updateTemplateInChat as updateTemplateChatContext, sendChatMessage } from '@/lib/groq';
 import { getMockAIResponse } from '@/lib/mockAIChat';
@@ -9,6 +9,11 @@ import { toast } from 'sonner';
 import { useFeedbackEvent } from '@/lib/useFeedbackEvent';
 import { FeedbackUI } from './FeedbackUI';
 import ShareModal from './ShareModal';
+import ScreenCapture from './ScreenCapture';
+import ScreenPipeCapture from './ScreenPipeCapture';
+import { insertImageIntoHtml, compressImage } from '@/lib/imageUtils';
+import { ScreenPipeAnalysisResult } from '@/lib/screenpipeUtils';
+import ImageAnalysisPrompt from './ImageAnalysisPrompt';
 
 interface EmailWorkspaceProps {
   emailContent: string;
@@ -89,6 +94,14 @@ const EmailWorkspace: React.FC<EmailWorkspaceProps> = ({
   // Add state for the send modal
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [templateName, setTemplateName] = useState("Email Template");
+  
+  // Add state for screen capture
+  const [isScreenCaptureOpen, setIsScreenCaptureOpen] = useState(false);
+  const [isScreenPipeCaptureOpen, setIsScreenPipeCaptureOpen] = useState(false);
+  
+  // Add state for image analysis and prompt
+  const [imageAnalysis, setImageAnalysis] = useState<ScreenPipeAnalysisResult | null>(null);
+  const [showAnalysisPrompt, setShowAnalysisPrompt] = useState(false);
   
   // Generate a session ID on mount
   useEffect(() => {
@@ -209,8 +222,8 @@ const EmailWorkspace: React.FC<EmailWorkspaceProps> = ({
   };
   
   // Handle sending chat messages to Groq via proxy
-  const handleSendMessage = async () => {
-    if (!userMessage.trim()) {
+  const handleSendMessage = async (useDecentralized: boolean, prompt: string) => {
+    if (!prompt.trim()) {
       toast.error('Please enter a message first');
       return;
     }
@@ -223,14 +236,14 @@ const EmailWorkspace: React.FC<EmailWorkspaceProps> = ({
       ...prev,
       {
         role: 'user',
-        content: userMessage,
+        content: prompt,
         timestamp: Date.now()
       }
     ]);
 
     setIsProcessing(true);
     try {
-      const updatedHtml = await sendChatMessage(userMessage, currentHtml);
+      const updatedHtml = await sendChatMessage(prompt, currentHtml);
       
       // Validate the HTML response - check if it's empty or too short to be valid
       if (!updatedHtml || updatedHtml.trim().length < 50 || 
@@ -286,7 +299,7 @@ const EmailWorkspace: React.FC<EmailWorkspaceProps> = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // Prevent default to avoid newline
       if (!isProcessing && userMessage.trim()) {
-        handleSendMessage();
+        handleSendMessage(false, userMessage);
       }
     }
     // Allow Shift+Enter for newline
@@ -493,6 +506,104 @@ const EmailWorkspace: React.FC<EmailWorkspaceProps> = ({
       toast.error("Failed to send email");
       return false;
     }
+  };
+
+  // Handle screen capture from ScreenPipe
+  const handleScreenPipeCapture = async (imageDataUrl: string, analysis?: ScreenPipeAnalysisResult) => {
+    try {
+      // Show loading toast
+      toast.loading('Processing ScreenPipe image...');
+      
+      // Compress the image to reduce size
+      const compressedImage = await compressImage(imageDataUrl, 800, 0.85);
+      
+      // Insert the image into the HTML template
+      const updatedHtml = insertImageIntoHtml(currentHtml, compressedImage);
+      
+      // Update the template
+      setCurrentHtml(updatedHtml);
+      
+      // If we have image analysis, show the analysis prompt
+      if (analysis) {
+        // Add system message showing the analysis
+        setMessages(prev => [...prev, {
+          role: 'assistant', 
+          content: `ScreenPipe analyzed your screenshot and identified: ${analysis.description}`,
+          timestamp: Date.now()
+        }]);
+        
+        // Store the analysis and show the prompt
+        setImageAnalysis(analysis);
+        setShowAnalysisPrompt(true);
+        
+        // Success notification for the image
+        toast.success('ScreenPipe screenshot added and analyzed');
+      } else {
+        // Add system message about image insertion without analysis
+        setMessages(prev => [...prev, {
+          role: 'assistant', 
+          content: 'ScreenPipe screenshot added to the email template.',
+          timestamp: Date.now()
+        }]);
+        
+        // Success notification
+        toast.success('ScreenPipe screenshot added');
+      }
+      
+      // Update the template in chat context
+      updateTemplateChatContext(updatedHtml);
+      
+    } catch (error) {
+      console.error('Error processing ScreenPipe screenshot:', error);
+      toast.error('Failed to add ScreenPipe screenshot');
+    }
+  };
+  
+  // Handle regular screen capture
+  const handleScreenCapture = async (imageDataUrl: string) => {
+    try {
+      // Show loading toast
+      toast.loading('Processing captured image...');
+      
+      // Compress the image to reduce size
+      const compressedImage = await compressImage(imageDataUrl, 800, 0.85);
+      
+      // Insert the image into the HTML template
+      const updatedHtml = insertImageIntoHtml(currentHtml, compressedImage);
+      
+      // Update the template
+      setCurrentHtml(updatedHtml);
+      
+      // Add system message about image insertion
+      setMessages(prev => [...prev, {
+        role: 'assistant', 
+        content: 'Screenshot added to the email template.',
+        timestamp: Date.now()
+      }]);
+      
+      // Success notification
+      toast.success('Screenshot added to template');
+      
+      // Update the template in chat context
+      updateTemplateChatContext(updatedHtml);
+      
+    } catch (error) {
+      console.error('Error processing screenshot:', error);
+      toast.error('Failed to add screenshot to template');
+    }
+  };
+
+  // Add a handler for the analysis prompt submission
+  const handleAnalysisPromptSubmit = (prompt: string) => {
+    // Set the user message to the prompt
+    setUserMessage(prompt);
+    
+    // Close the analysis prompt
+    setShowAnalysisPrompt(false);
+    setImageAnalysis(null);
+    
+    // Send the message to Groq
+    handleSendMessage(false, prompt);
   };
 
   return (
@@ -741,13 +852,33 @@ const EmailWorkspace: React.FC<EmailWorkspaceProps> = ({
                 onKeyDown={handleKeyDown}
                 disabled={isProcessing}
               />
-              <button 
-                onClick={handleSendMessage}
-                disabled={isProcessing || !userMessage.trim()}
-                className="absolute bottom-2 right-2 bg-neutral-700 hover:bg-neutral-600 text-white p-1 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send size={14} />
-              </button>
+              <div className="absolute bottom-2 right-2 flex gap-1">
+                <button
+                  onClick={() => setIsScreenCaptureOpen(true)}
+                  disabled={isProcessing}
+                  title="Capture screenshot to add to template"
+                  className="bg-neutral-700 hover:bg-neutral-600 text-white p-1 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Camera size={14} />
+                </button>
+                
+                <button
+                  onClick={() => setIsScreenPipeCaptureOpen(true)}
+                  disabled={isProcessing}
+                  title="Capture with ScreenPipe"
+                  className="bg-green-700 hover:bg-green-600 text-white p-1 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ImageIcon size={14} />
+                </button>
+                
+                <button 
+                  onClick={() => handleSendMessage(false, userMessage)}
+                  disabled={isProcessing || !userMessage.trim()}
+                  className="bg-neutral-700 hover:bg-neutral-600 text-white p-1 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send size={14} />
+                </button>
+              </div>
             </div>
             {isProcessing && (
               <p className="text-[10px] text-neutral-400 mt-1 animate-pulse">
@@ -768,6 +899,22 @@ const EmailWorkspace: React.FC<EmailWorkspaceProps> = ({
         </div>
       )}
 
+      {/* Screen Capture Modal */}
+      {isScreenCaptureOpen && (
+        <ScreenCapture
+          onCapture={handleScreenCapture}
+          onClose={() => setIsScreenCaptureOpen(false)}
+        />
+      )}
+      
+      {/* ScreenPipe Capture Modal */}
+      {isScreenPipeCaptureOpen && (
+        <ScreenPipeCapture
+          onCapture={handleScreenPipeCapture}
+          onClose={() => setIsScreenPipeCaptureOpen(false)}
+        />
+      )}
+      
       {/* Collaboration Modal */}
       {isShareModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/70" onClick={() => setIsShareModalOpen(false)}>
@@ -822,6 +969,18 @@ const EmailWorkspace: React.FC<EmailWorkspaceProps> = ({
         templateName={templateName}
         onSend={handleSendEmail}
       />
+
+      {/* Image Analysis Prompt Modal */}
+      {showAnalysisPrompt && imageAnalysis && (
+        <ImageAnalysisPrompt
+          analysis={imageAnalysis}
+          onSubmit={handleAnalysisPromptSubmit}
+          onCancel={() => {
+            setShowAnalysisPrompt(false);
+            setImageAnalysis(null);
+          }}
+        />
+      )}
     </div>
   );
 };

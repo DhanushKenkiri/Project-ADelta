@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Mail, Grid, BarChart, Settings, FileText, HelpCircle, Folder } from 'lucide-react';
+import React, { useState } from 'react';
+import { Mail, Settings, FileText, Folder } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserProfile } from './UserProfile';
 import { useAuth } from '@/lib/AuthContext';
@@ -67,68 +67,16 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             to="/my-templates"
           />
         )}
-        <div className="relative">
-          <div 
-            onClick={(e) => handleInDevFeature(e, "Dashboard")} 
-            className="w-full"
-          >
-            <SidebarItem 
-              icon={<Grid size={20} />} 
-              active={isActive('/dashboard')} 
-              expanded={expanded} 
-              label="Dashboard" 
-              to="#"
-            />
-          </div>
-          {devNotice === "Dashboard" && (
-            <div className="absolute top-1 -right-32 z-10 px-3 py-1.5 bg-neutral-800 text-xs text-white rounded shadow-lg whitespace-nowrap border border-neutral-700 animate-fade-in-out flex items-center">
-              <div className="w-2 h-2 rounded-full bg-indigo-500 mr-2 animate-pulse"></div>
-              In development
-            </div>
-          )}
-        </div>
-        <div className="relative">
-          <div 
-            onClick={(e) => handleInDevFeature(e, "Analytics")} 
-            className="w-full"
-          >
-            <SidebarItem 
-              icon={<BarChart size={20} />} 
-              active={isActive('/analytics')} 
-              expanded={expanded} 
-              label="Analytics" 
-              to="#"
-            />
-          </div>
-          {devNotice === "Analytics" && (
-            <div className="absolute top-1 -right-32 z-10 px-3 py-1.5 bg-neutral-800 text-xs text-white rounded shadow-lg whitespace-nowrap border border-neutral-700 animate-fade-in-out flex items-center">
-              <div className="w-2 h-2 rounded-full bg-indigo-500 mr-2 animate-pulse"></div>
-              In development
-            </div>
-          )}
-        </div>
       </nav>
       
       <div className="mt-auto flex flex-col items-center gap-1">
-        <div className="relative">
-          <div 
-            onClick={(e) => handleInDevFeature(e, "Settings")} 
-            className="w-full"
-          >
-            <SidebarItem 
-              icon={<Settings size={20} />} 
-              expanded={expanded} 
-              label="Settings" 
-              to="#"
-            />
-          </div>
-          {devNotice === "Settings" && (
-            <div className="absolute top-1 -right-32 z-10 px-3 py-1.5 bg-neutral-800 text-xs text-white rounded shadow-lg whitespace-nowrap border border-neutral-700 animate-fade-in-out flex items-center">
-              <div className="w-2 h-2 rounded-full bg-indigo-500 mr-2 animate-pulse"></div>
-              In development
-            </div>
-          )}
-        </div>
+        <SidebarItem 
+          icon={<Settings size={20} />} 
+          active={isActive('/settings')} 
+          expanded={expanded} 
+          label="Settings" 
+          to="/settings"
+        />
         
         {/* User Profile Component */}
         <div className="w-full flex justify-center py-2 mt-2">
