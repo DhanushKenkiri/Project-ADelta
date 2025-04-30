@@ -1,9 +1,11 @@
+// Import polyfill for Buffer
+import './lib/bufferPolyfill';
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import ErrorBoundary from './components/ErrorBoundary'
-import { initializeScreenPipe } from './lib/screenpipeConfig'
 
 // Add console logs for debugging
 console.log('Application starting...');
@@ -12,14 +14,36 @@ console.log('Environment variables loaded:', {
   firebaseKey: !!import.meta.env.VITE_FIREBASE_API_KEY ? 'Present' : 'Missing',
 });
 
-// Initialize ScreenPipe integration
-initializeScreenPipe();
+// Safely initialize external services
+const initializeExternalServices = () => {
+  // Initialize ScreenPipe integration if available
+  try {
+    import('./lib/screenpipeConfig').then(module => {
+      try {
+        module.initializeScreenPipe();
+      } catch (error) {
+        console.log('ScreenPipe initialization failed:', error);
+      }
+    }).catch(error => {
+      console.log('ScreenPipe module import failed:', error);
+    });
+  } catch (error) {
+    console.log('ScreenPipe integration skipped');
+  }
+};
 
-const rootElement = document.getElementById("root");
+// Initialize services with error handling
+initializeExternalServices();
 
-if (!rootElement) {
-  console.error('Root element not found. Make sure there is a <div id="root"></div> in your HTML.');
-} else {
+// Render the application
+const renderApp = () => {
+  const rootElement = document.getElementById("root");
+
+  if (!rootElement) {
+    console.error('Root element not found. Make sure there is a <div id="root"></div> in your HTML.');
+    return;
+  }
+
   try {
     const root = ReactDOM.createRoot(rootElement);
     root.render(
@@ -43,4 +67,7 @@ if (!rootElement) {
       </div>
     `;
   }
-}
+};
+
+// Start the application
+renderApp();

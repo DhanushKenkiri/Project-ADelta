@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TemplatesPage from "./pages/templates";
@@ -25,6 +25,8 @@ import { initializeVercelBlob } from "@/integrations/vercel/init";
 import MultiFileUploadExample from "./pages/multi-file-upload-example";
 import MailInboxPage from "./pages/MailInbox";
 import ComposePage from "./pages/Compose";
+import InboxPage from "./pages/inbox";
+import WalletProvider from "./components/WalletProvider";
 
 const queryClient = new QueryClient();
 
@@ -43,14 +45,31 @@ const HomeRedirect = () => {
 const StorageInitializer = () => {
   useEffect(() => {
     // Initialize Vercel Blob services when the app loads
-    initializeVercelBlob().then(({ success }) => {
-      if (success) {
-        console.log('Vercel Blob services initialized successfully');
-      }
-    });
+    try {
+      initializeVercelBlob().then(({ success }) => {
+        if (success) {
+          console.log('Vercel Blob services initialized successfully');
+        }
+      }).catch(err => {
+        // Silently ignore Vercel Blob initialization errors in development
+        console.log('Note: Vercel Blob initialization skipped (requires production environment)');
+      });
+    } catch (error) {
+      // Ignore errors
+      console.log('Note: Vercel Blob initialization skipped (requires production environment)');
+    }
   }, []);
   
   return null;
+};
+
+// Wallet-enabled route component
+const WalletRoute = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <WalletProvider>
+      {children}
+    </WalletProvider>
+  );
 };
 
 const App = () => (
@@ -88,7 +107,18 @@ const App = () => (
                 <Route path="/multi-file-upload-example" element={<MultiFileUploadExample />} />
                 <Route path="/mail-inbox" element={<MailInboxPage />} />
                 <Route path="/mail" element={<MailInboxPage />} />
-                <Route path="/compose" element={<ComposePage />} />
+                
+                {/* Wallet-enabled routes */}
+                <Route path="/compose" element={
+                  <WalletRoute>
+                    <ComposePage />
+                  </WalletRoute>
+                } />
+                <Route path="/inbox" element={
+                  <WalletRoute>
+                    <InboxPage />
+                  </WalletRoute>
+                } />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

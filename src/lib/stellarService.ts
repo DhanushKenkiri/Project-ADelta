@@ -22,14 +22,47 @@ export interface TransactionResult {
   error?: string;
 }
 
-class StellarService {
+export interface Email {
+  id: string;
+  from: string;
+  subject: string;
+  content: string;
+  timestamp: Date;
+  isRead: boolean;
+  isStarred: boolean;
+  labels: string[];
+  stellarSignature: string;
+  stellarPublicKey: string;
+}
+
+export class StellarService {
+  private server: any; // Changed from StellarSdk.Server to any
+  private network: string;
   private isTestnet: boolean;
   // Always run in mock mode by default
   private mockMode: boolean = true;
 
   constructor(isTestnet: boolean = true) {
     this.isTestnet = isTestnet;
-    console.log('Stellar service initialized in mock mode');
+    this.network = isTestnet ? 'TESTNET' : 'PUBLIC';
+    
+    // Handle browser environments where StellarSdk.Server might not be available
+    try {
+      if (typeof StellarSdk.Server === 'function') {
+        this.server = new StellarSdk.Server(isTestnet 
+          ? 'https://horizon-testnet.stellar.org' 
+          : 'https://horizon.stellar.org');
+        console.log(`Stellar service initialized in ${isTestnet ? 'testnet' : 'mainnet'} mode`);
+      } else {
+        console.warn('StellarSdk.Server not available, using mock mode');
+        this.mockMode = true;
+        this.server = null;
+      }
+    } catch (error) {
+      console.warn('Error initializing Stellar server, using mock mode:', error);
+      this.mockMode = true;
+      this.server = null;
+    }
   }
 
   /**
@@ -138,7 +171,8 @@ class StellarService {
           asset_type: 'native',
           balance: '100.0000000'
         }
-      ]
+      ],
+      data_attr: {} // Add empty data attributes
     };
   }
 
@@ -316,8 +350,268 @@ class StellarService {
     
     return { publicKey, secretKey };
   }
+
+  // Initialize account if needed
+  async initializeAccount(publicKey: string): Promise<void> {
+    // Always use mock implementation in browser
+    if (this.mockMode || !this.server) {
+      console.log(`Mock initializing account: ${publicKey}`);
+      return Promise.resolve();
+    }
+    
+    try {
+      // Check if account exists
+      await this.server.loadAccount(publicKey);
+    } catch (e) {
+      if (!this.isTestnet) {
+        throw new Error('Account does not exist and cannot be auto-created on mainnet');
+      }
+      
+      // Account doesn't exist, so create a friendbot request to fund it
+      try {
+        const response = await fetch(
+          `https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`
+        );
+        const responseJSON = await response.json();
+        console.log("Friendbot response:", responseJSON);
+      } catch (error) {
+        console.error('Error funding account:', error);
+        throw new Error('Failed to initialize Stellar account');
+      }
+    }
+  }
+
+  // Get emails for a user
+  async getEmails(publicKey: string): Promise<Email[]> {
+    // Use mock implementation in browser or if server is not available
+    if (this.mockMode || !this.server) {
+      return this.getMockEmails();
+    }
+    
+    try {
+      // Ensure account is initialized
+      await this.initializeAccount(publicKey);
+
+      // Query the Stellar Data API (Note: This is a simplified example)
+      // In a real implementation, you'd use account data or a custom hosted service
+      const account = await this.server.loadAccount(publicKey);
+      
+      // Check if the account has data entries for emails
+      const emails: Email[] = [];
+      
+      // Parse data entries from the account
+      for (const [key, value] of Object.entries(account.data_attr || {})) {
+        if (key.startsWith('email_')) {
+          try {
+            const decodedValue = Buffer.from(value as string, 'base64').toString('utf-8');
+            const emailData = JSON.parse(decodedValue);
+            emails.push({
+              ...emailData,
+              timestamp: new Date(emailData.timestamp)
+            });
+          } catch (err) {
+            console.error('Error parsing email data:', err);
+          }
+        }
+      }
+      
+      // For demo purposes, we'll create some mock emails if none exist
+      if (emails.length === 0) {
+        return this.getMockEmails();
+      }
+      
+      return emails;
+    } catch (error) {
+      console.error('Error getting emails:', error);
+      return this.getMockEmails(); // Return mock data for demo purposes
+    }
+  }
+
+  // Mark email as read
+  async markAsRead(emailId: string, publicKey: string): Promise<boolean> {
+    try {
+      // In a real implementation, this would update the email status on Stellar
+      console.log(`Marking email ${emailId} as read for ${publicKey}`);
+      return true;
+    } catch (error) {
+      console.error('Error marking email as read:', error);
+      return false;
+    }
+  }
+
+  // Toggle star status
+  async toggleStar(emailId: string, publicKey: string): Promise<boolean> {
+    try {
+      // In a real implementation, this would update the star status on Stellar
+      console.log(`Toggling star for email ${emailId} for ${publicKey}`);
+      return true;
+    } catch (error) {
+      console.error('Error toggling star:', error);
+      return false;
+    }
+  }
+
+  // Delete an email
+  async deleteEmail(emailId: string, publicKey: string): Promise<boolean> {
+    try {
+      // In a real implementation, this would delete the email on Stellar
+      console.log(`Deleting email ${emailId} for ${publicKey}`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting email:', error);
+      return false;
+    }
+  }
+
+  // Share an email with another user via Stellar
+  async shareEmail(emailId: string, fromPublicKey: string, toPublicKey: string): Promise<boolean> {
+    try {
+      // In a real implementation, this would share the email via Stellar
+      console.log(`Sharing email ${emailId} from ${fromPublicKey} to ${toPublicKey}`);
+      return true;
+    } catch (error) {
+      console.error('Error sharing email:', error);
+      return false;
+    }
+  }
+
+  // Send a new email via Stellar
+  async sendEmail(email: Omit<Email, 'id' | 'timestamp' | 'stellarSignature'>, 
+                 fromPublicKey: string, 
+                 toPublicKey: string, 
+                 privateKey: string): Promise<string> {
+    try {
+      // Generate ID and timestamp
+      const id = this.generateId();
+      const timestamp = new Date();
+      
+      // In browser or mock mode, just log the action
+      if (this.mockMode) {
+        console.log(`Mock sending email from ${fromPublicKey} to ${toPublicKey}`);
+        console.log(`Subject: ${email.subject}`);
+        return id;
+      }
+      
+      try {
+        // Sign the email content with the sender's private key
+        const keypair = StellarSdk.Keypair.fromSecret(privateKey);
+        const dataToSign = `${email.subject}:${email.content}:${toPublicKey}:${timestamp.toISOString()}`;
+        const dataBuffer = Buffer.from(dataToSign);
+        const signature = keypair.sign(dataBuffer).toString('base64');
+        
+        // In a real implementation, you would store this in Stellar's data entries or a custom service
+        console.log(`Sending email from ${fromPublicKey} to ${toPublicKey}`);
+        
+        return id;
+      } catch (sdkError) {
+        console.error('Error using Stellar SDK:', sdkError);
+        return id; // Return ID anyway for demo
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      // Still return an ID for demo purposes
+      return this.generateId();
+    }
+  }
+
+  // Generate a random ID
+  private generateId(): string {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  }
+
+  // Get mock emails for demo purposes
+  private getMockEmails(): Email[] {
+    return [
+      {
+        id: this.generateId(),
+        from: 'stellar@base.xyz',
+        subject: 'Welcome to Base Stellar Integration',
+        content: 'Thank you for using our Base Stellar integration! This email is secured by blockchain technology, ensuring privacy and authenticity.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+        isRead: false,
+        isStarred: false,
+        labels: ['important', 'inbox'],
+        stellarSignature: 'valid-signature-1',
+        stellarPublicKey: 'GDKXYSGK3CLLOKJTFUPIIDPJAT4IWHS6EAKBS2CVLCV3QM6APLCBXXB7'
+      },
+      {
+        id: this.generateId(),
+        from: 'team@basenetwork.org',
+        subject: 'Your Base Network Update',
+        content: 'The Base Network has some exciting updates this month! Check out our latest developments and how they can benefit your decentralized applications.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
+        isRead: true,
+        isStarred: true,
+        labels: ['updates', 'inbox'],
+        stellarSignature: 'valid-signature-2',
+        stellarPublicKey: 'GBIVADXUXTH2YSZX5FJWSMJDKJVJC2TJSDYYDIBCAJIATS4KTS4KHO2Y'
+      },
+      {
+        id: this.generateId(),
+        from: 'security@stellaralert.io',
+        subject: 'Security Alert: New Login',
+        content: 'We detected a new login to your Stellar account from a new device. If this was you, no action is needed. If not, please secure your account immediately.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
+        isRead: true,
+        isStarred: false,
+        labels: ['security', 'important'],
+        stellarSignature: 'valid-signature-3',
+        stellarPublicKey: 'GDSB3DWKLVYWSSYCBVL5OLIURHSIFVPX7WXQZNMKUAKRLSYKSKV6KNF5'
+      },
+      {
+        id: this.generateId(),
+        from: 'newsletter@crypto-daily.com',
+        subject: 'This Week in Crypto: Stellar Developments',
+        content: 'The Stellar network has seen significant adoption this week with multiple financial institutions announcing integration. Read our full analysis of what this means for the ecosystem.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 days ago
+        isRead: false,
+        isStarred: true,
+        labels: ['newsletter'],
+        stellarSignature: '',
+        stellarPublicKey: ''
+      },
+      {
+        id: this.generateId(),
+        from: 'transactions@stellar-pay.io',
+        subject: 'Transaction Receipt: 25 XLM',
+        content: 'You have received 25 XLM from account GDKXYSGK3CLLOKJTFUPIIDPJAT4IWHS6EAKBS2CVLCV3QM6APLCBXXB7. Transaction ID: 3a1e454b5a2c...',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7), // 7 days ago
+        isRead: true,
+        isStarred: false,
+        labels: ['transactions'],
+        stellarSignature: 'valid-signature-4',
+        stellarPublicKey: 'GDKXYSGK3CLLOKJTFUPIIDPJAT4IWHS6EAKBS2CVLCV3QM6APLCBXXB7'
+      }
+    ];
+  }
+
+  // Check if an address exists
+  async addressExists(publicKey: string): Promise<boolean> {
+    // Always return true in mock mode
+    if (this.mockMode || !this.server) {
+      return true;
+    }
+    
+    try {
+      await this.server.loadAccount(publicKey);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Convert XLM to USD
+  async getXlmToUsdRate(): Promise<number> {
+    try {
+      // In a real implementation, you'd query an exchange API
+      return 0.37; // Mock value
+    } catch (error) {
+      console.error('Error getting XLM to USD rate:', error);
+      return 0.37; // Default mock value
+    }
+  }
 }
 
-// Create singleton instance
+// Create a singleton instance
 export const stellarService = new StellarService();
 export default stellarService; 

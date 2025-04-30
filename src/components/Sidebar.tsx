@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Settings, FileText, Folder } from 'lucide-react';
+import { Mail, Settings, FileText, Folder, Inbox } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserProfile } from './UserProfile';
 import { useAuth } from '@/lib/AuthContext';
@@ -50,6 +50,13 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           expanded={expanded} 
           label="Email" 
           to="/"
+        />
+        <SidebarItem 
+          icon={<Inbox size={20} />} 
+          active={isActive('/inbox')} 
+          expanded={expanded} 
+          label="Inbox" 
+          to="/inbox"
         />
         <SidebarItem 
           icon={<FileText size={20} />} 
