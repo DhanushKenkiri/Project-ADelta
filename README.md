@@ -60,9 +60,10 @@ For enhanced screenshot functionality and image analysis, you need to install Sc
 
 The mail sharing functionality supports multiple Ethereum L2 networks:
 
-1. Optimism
-2. Arbitrum
-3. Polygon
+1. Base
+2. Optimism
+3. Arbitrum
+4. Polygon
 
 To use this feature:
 
