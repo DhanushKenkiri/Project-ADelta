@@ -111,7 +111,7 @@ The project can be deployed to Firebase Hosting:
 - Fluvio for real-time collaboration
 - ScreenPipe for enhanced screenshots
 - Groq AI for intelligent template suggestions
-- Ethereum L2 (Optimism, Arbitrum, Polygon) for secure mail sharing
+- Ethereum L2 (Base, Optimism, Arbitrum, Polygon) for secure mail sharing
 - IPFS for decentralized storage
 
 ## License
