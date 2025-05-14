@@ -1,0 +1,255 @@
+<mjml>
+  <mj-head>
+    <mj-title>University of Hyderabad</mj-title>
+    <mj-font name="Arial" href="https://fonts.googleapis.com/css?family=Arial" />
+    <mj-attributes>
+      <mj-all font-family="Arial, sans-serif" />
+      <mj-text font-size="14px" line-height="1.6" />
+    </mj-attributes>
+    
+    <mj-style>
+      /* Theme Variables */
+      :root {
+        --bg-light: #ffffff;
+        --bg-dark: #1a1a1a;
+        --text-light: #000000;
+        --text-dark: #ffffff;
+      }
+
+      /* Toggle Switch Styles */
+      .theme-toggle {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 30px;
+      }
+
+      .theme-toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #1a1a1a;
+        transition: 0.4s;
+        border-radius: 34px;
+      }
+
+      [data-theme="dark"] .toggle-slider {
+        background-color: #2196F3;
+      }
+
+      .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+        z-index: 2;
+      }
+
+      [data-theme="dark"] .toggle-slider:before {
+        transform: translateX(30px);
+        background-color: #ffffff;
+      }
+
+      /* Updated Dark Theme Styles */
+      [data-theme="dark"] .content-wrapper {
+        background-color: var(--bg-dark) !important;
+      }
+
+      [data-theme="dark"] .header {
+        background-color: var(--bg-dark) !important;
+      }
+
+      [data-theme="dark"] .content-section {
+        background-color: var(--bg-dark) !important;
+      }
+
+      [data-theme="dark"] .text-content {
+        color: var(--text-dark) !important;
+      }
+
+      /* Add specific style for mj-text in dark mode */
+      [data-theme="dark"] .dark-text {
+        color: var(--text-dark) !important;
+      }
+
+      /* Fixed Button Styles */
+      .custom-button {
+        background-color: #ffffff !important;
+        color: #1a1a1a !important;
+        transition: all 0.3s ease !important;
+      }
+
+      [data-theme="dark"] .custom-button {
+        background-color: #1a1a1a !important;
+        color: #ffffff !important;
+      }
+
+      /* Toggle Icons */
+      .toggle-icons {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      .toggle-icons::before {
+        content: "🌙";
+        position: absolute;
+        left: 7px;
+        top: 6px;
+        font-size: 12px;
+        opacity: 1;
+        transition: opacity 0.3s ease;
+      }
+
+      .toggle-icons::after {
+        content: "☀️";
+        position: absolute;
+        right: 7px;
+        top: 6px;
+        font-size: 12px;
+        opacity: 1;
+        transition: opacity 0.3s ease;
+      }
+
+      [data-theme="dark"] .toggle-icons::before {
+        opacity: 1;
+      }
+
+      [data-theme="dark"] .toggle-icons::after {
+        opacity: 0.5;
+      }
+
+      /* Text transition styles */
+      .dark-text {
+        transition: color 0.3s ease;
+      }
+    </mj-style>
+
+    <mj-style inline="inline">
+      .content-wrapper { 
+        background-color: var(--bg-light); 
+        transition: all 0.3s ease;
+      }
+      .header { 
+        background-color: var(--bg-light); 
+        padding: 20px 0;
+        transition: all 0.3s ease;
+      }
+      .text-content {
+        color: var(--text-light);
+        transition: all 0.3s ease;
+      }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#f4f4f4">
+    <!-- Theme Toggle -->
+    <mj-section padding="10px 0">
+      <mj-column>
+        <mj-text align="right">
+          <label class="theme-toggle">
+            <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+            <div class="toggle-icons"></div>
+            <span class="toggle-slider"></span>
+          </label>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content Wrapper -->
+    <mj-wrapper css-class="content-wrapper">
+      <mj-section css-class="header">
+        <mj-column>
+          <mj-image width="120px" src="https://uohyd.ac.in/wp-content/uploads/2024/09/UoH-log-new3L.png" alt="University of Hyderabad Logo" />
+        </mj-column>
+      </mj-section>
+
+      <mj-section css-class="content-section">
+        <mj-column>
+          <mj-text font-size="24px" align="center" font-weight="bold" css-class="text-content dark-text">
+            Welcome to University of Hyderabad
+          </mj-text>
+
+          <mj-divider border-color="#1a1a1a" border-width="1px" />
+
+          <mj-text font-size="16px" css-class="text-content dark-text">
+            Dear [Recipient Name],
+          </mj-text>
+
+          <mj-text css-class="text-content dark-text">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+          </mj-text>
+
+          <mj-button css-class="custom-button" border-radius="4px" href="#">
+            Learn More
+          </mj-button>
+        </mj-column>
+      </mj-section>
+
+      <mj-section background-color="#1a1a1a" css-class="footer">
+        <mj-column>
+          <mj-text color="#ffffff" align="center" font-size="12px" css-class="dark-text">
+            University of Hyderabad<br />
+            Prof. C.R. Rao Road, Gachibowli<br />
+            Hyderabad - 500 046, Telangana, India
+          </mj-text>
+
+          <mj-social font-size="15px" icon-size="30px" mode="horizontal">
+            <mj-social-element name="facebook" href="#" />
+            <mj-social-element name="twitter" href="#" />
+            <mj-social-element name="linkedin" href="#" />
+          </mj-social>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <mj-raw>
+      <script type="text/javascript">
+        function toggleTheme() {
+          const toggle = document.getElementById('themeToggle');
+          const theme = toggle.checked ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+          
+          // Update all elements that need theme changes
+          const elements = document.querySelectorAll('.content-wrapper, .header, .content-section, .text-content, .theme-toggle, .toggle-icons, .dark-text');
+          elements.forEach(element => {
+            element.setAttribute('data-theme', theme);
+            
+            // Update text color directly for mj-text elements
+            if (element.classList.contains('dark-text')) {
+              element.style.color = theme === 'dark' ? '#ffffff' : '#000000';
+            }
+          });
+
+          // Set toggle button state
+          toggle.checked = theme === 'dark';
+        }
+
+        // Initialize theme on load
+        document.addEventListener('DOMContentLoaded', function() {
+          const toggle = document.getElementById('themeToggle');
+          if (toggle) {
+            toggle.checked = false; // Start with light theme
+            toggleTheme();
+          }
+        });
+      </script>
+    </mj-raw>
+  </mj-body>
+</mjml>

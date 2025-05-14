@@ -1,0 +1,100 @@
+﻿                        onClick={checkBlobStorage} 
+                        disabled={blobStatus === "loading"}
+                        className="w-fit"
+                      >
+                        {blobStatus === "loading" ? "Testing Connection..." : "Test Blob Storage Connection"}
+                      </Button>
+                      
+                      {blobStatus === "success" && (
+                        <div className="text-green-500 mt-2 p-2 bg-green-50 rounded-md">
+                          âœ“ Connection successful! The application can connect to Azure Blob Storage.
+                        </div>
+                      )}
+                      
+                      {blobStatus === "error" && (
+                        <div className="text-red-500 mt-2 p-2 bg-red-50 rounded-md">
+                          âœ— Connection failed! The application cannot connect to Azure Blob Storage.
+                          {blobErrorDetails && (
+                            <div className="mt-2 text-sm bg-red-100 p-2 rounded overflow-auto max-h-32">
+                              <code>{blobErrorDetails}</code>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex flex-col items-start text-sm text-muted-foreground">
+                  <p>Having trouble with blob storage?</p>
+                  <ul className="list-disc pl-5 mt-2">
+                    <li>Verify your internet connection</li>
+                    <li>Check that your Azure Storage account is active</li>
+                    <li>Verify your API endpoints are correctly configured</li>
+                    <li>Make sure you're logged in if authentication is required</li>
+                  </ul>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="local-storage" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Local Storage Diagnostics</CardTitle>
+                  <CardDescription>
+                    View and manage browser local storage usage
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <Label className="text-sm font-medium">Total Usage: {formatBytes(totalLocalStorageUsed)}</Label>
+                        <p className="text-sm text-muted-foreground">Items: {localStorageItems.length}</p>
+                      </div>
+                      <div className="space-x-2">
+                        <Button onClick={scanLocalStorage} variant="outline" size="sm">Refresh</Button>
+                        <Button onClick={clearAllLocalStorage} variant="destructive" size="sm">Clear All</Button>
+                      </div>
+                    </div>
+                    
+                    {localStorageItems.length > 0 ? (
+                      <div className="border rounded-md overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key</th>
+                              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                              <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {localStorageItems.map((item) => (
+                              <tr key={item.key}>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 max-w-[200px] truncate">{item.key}</td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.type}</td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{formatBytes(item.size)}</td>
+                                <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                                  <Button 
+                                    onClick={() => clearLocalStorageItem(item.key)} 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    Delete
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground">
+                        No local storage items found
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+                <CardFooter className="flex flex-col items-start text-sm text-muted-foreground">
+                  <p>Local storage is limited to around 5-10MB depending on the browser.</p>
